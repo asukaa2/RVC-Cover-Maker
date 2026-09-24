@@ -5,4 +5,4 @@ pedalboard
 pydub
 regex
 PyYAML
-git+https://github.com/asukaa2/gradio
+gradio
