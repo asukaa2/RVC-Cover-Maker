@@ -1,14 +1,18 @@
 #!/bin/bash
 
 # Define the repository URL
-REPO_URL="https://github.com/Eddycrack864/RVC-AI-Cover-Maker-UI"
+REPO_URL="https://github.com/asukaa2/RVC-Cover-Maker"
 
 # Navigate to the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR"
 
-# List of directories to keep
-declare -a KEEP_DIRS=("env" "logs" "audio_files" "programs/applio_code/rvc/models")
+# List of directories to keep.
+# NOTE: After the migration to the `rvc` pip package, the vendored
+# `programs/applio_code/` directory is gone. Predictor / embedder
+# models now live in `assets/models/` (managed by the `rvc` package
+# itself, which auto-downloads them from HuggingFace on first use).
+declare -a KEEP_DIRS=("env" "logs" "audio_files" "assets/models")
 
 # Function to check if a directory should be kept
 should_keep_dir() {
@@ -26,18 +30,8 @@ for d in *; do
     if [ -d "$d" ]; then
         IS_KEEP=false
         for kp_dir in "${KEEP_DIRS[@]}"; do
-            # Check for direct matches and parent directories of "programs/applio_code/rvc/models"
             if [[ "$d" == "$kp_dir" ]]; then
                 IS_KEEP=true
-                break
-            elif [[ "$kp_dir" == programs/* && "$d" == programs && "$d" != programs/applio_code ]]; then
-                IS_KEEP=false
-                break
-            elif [[ "$kp_dir" == programs/applio_code/* && "$d" == programs/applio_code && "$d" != programs/applio_code/rvc ]]; then
-                IS_KEEP=false
-                break
-            elif [[ "$kp_dir" == programs/applio_code/rvc/* && "$d" == programs/applio_code/rvc && "$d" != programs/applio_code/rvc/models ]]; then
-                IS_KEEP=false
                 break
             fi
         done

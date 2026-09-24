@@ -1,3 +1,27 @@
-audio-separator[gpu]
+# RVC inference engine — installed from uziproj/rvc.
+# This single line pulls in everything the cover maker needs for voice
+# conversion: torch / torchaudio, fairseq (via the rvc package's
+# lib/embedders/), faiss-cpu, librosa, soundfile, einops, transformers,
+# praat-parselmouth, tqdm, requests, etc. (See rvc/pyproject.toml for
+# the full dependency closure.)
+#
+# The `rvc` package also lazily auto-downloads predictor and embedder
+# models from HuggingFace on first inference — there is no separate
+# `programs/applio_code/rvc/lib/tools/prerequisites_download.py` step.
 git+https://github.com/uziproj/rvc.git
+
+# Music / vocal separation (BS-Roformer, Mel-Roformer, Demucs, MDX23C...)
+audio-separator[gpu]
+
+# YouTube download for the "Download Music" tab.
 yt-dlp
+
+# UI helpers used by the Gradio tabs (Pedalboard for reverb, pydub for
+# audio concatenation, regex for model-name sanitisation, PyYAML for
+# reading the separator config files). The `rvc` package already brings
+# in librosa / soundfile / ffmpeg-python; these are the remaining
+# cover-maker-specific deps.
+pedalboard
+pydub
+regex
+PyYAML

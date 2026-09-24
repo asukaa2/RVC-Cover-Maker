@@ -3,8 +3,7 @@ import shutil
 import os, sys
 import regex as re
 
-from core import download_model
-from programs.applio_code.rvc.lib.utils import format_title
+from core import download_model, _format_title
 from assets.i18n.i18n import I18nAuto
 
 now_dir = os.getcwd()
@@ -19,33 +18,33 @@ def save_drop_model(dropbox):
             message="The file you dropped is not a valid model file. Please try again."
         )
     else:
-        file_name = format_title(os.path.basename(dropbox))
+        file_name = _format_title(os.path.basename(dropbox))
         if ".pth" in dropbox:
-            model_name = format_title(file_name.split(".pth")[0])
+            model_name = _format_title(file_name.split(".pth")[0])
         else:
             if (
                 "v2" not in dropbox
                 and "added_" not in dropbox
                 and "_nprobe_1_" not in dropbox
             ):
-                model_name = format_title(file_name.split(".index")[0])
+                model_name = _format_title(file_name.split(".index")[0])
             else:
                 if "v2" not in dropbox:
                     if "_nprobe_1_" in file_name and "_v1" in file_name:
-                        model_name = format_title(
+                        model_name = _format_title(
                             file_name.split("_nprobe_1_")[1].split("_v1")[0]
                         )
                     elif "added_" in file_name and "_v1" in file_name:
-                        model_name = format_title(
+                        model_name = _format_title(
                             file_name.split("added_")[1].split("_v1")[0]
                         )
                 else:
                     if "_nprobe_1_" in file_name and "_v2" in file_name:
-                        model_name = format_title(
+                        model_name = _format_title(
                             file_name.split("_nprobe_1_")[1].split("_v2")[0]
                         )
                     elif "added_" in file_name and "_v2" in file_name:
-                        model_name = format_title(
+                        model_name = _format_title(
                             file_name.split("added_")[1].split("_v2")[0]
                         )
 

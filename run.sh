@@ -35,7 +35,7 @@ if [ ! -d "env" ]; then
     echo
 
     echo "Creating Conda environment..."
-    $CONDA_EXECUTABLE create --no-shortcuts -y -k --prefix "$INSTALL_ENV_DIR" python=3.9
+    $CONDA_EXECUTABLE create --no-shortcuts -y -k --prefix "$INSTALL_ENV_DIR" python=3.10
     if [ $? -ne 0 ]; then
         exit 1
     fi
@@ -52,10 +52,18 @@ if [ ! -d "env" ]; then
         echo
     fi
 
+    # Install dependencies, including the `rvc` package (uziproj/rvc) which
+    # brings its own predictor/embedder model auto-download (no separate
+    # prerequisites_download.py step needed).
     echo "Installing dependencies..."
     source "$CONDA_ROOT_PREFIX/etc/profile.d/conda.sh"
     conda activate "$INSTALL_ENV_DIR" || exit 1
     pip install --upgrade setuptools || exit 1
+    # NOTE: requirements.txt lists `git+https://github.com/uziproj/rvc.git`,
+    # but we install it WITH deps (not --no-deps) so that fairseq, einops,
+    # faiss-cpu, etc. are pulled in automatically. The other entries are
+    # installed with --no-deps to avoid clobbering torch.
+    pip install "git+https://github.com/uziproj/rvc.git" || exit 1
     pip install --no-deps -r "$principal/requirements.txt" || exit 1
     pip uninstall torch torchvision torchaudio -y
     pip install torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121 || exit 1
@@ -64,10 +72,9 @@ if [ ! -d "env" ]; then
     echo
 fi
 
-if [ ! -d "programs/applio_code/rvc/models" ]; then
-    python programs/applio_code/rvc/lib/tools/prerequisites_download.py
-    echo
-fi
+# The uziproj/rvc package lazily auto-downloads predictor and embedder
+# models from HuggingFace on first inference, so there is no separate
+# `programs/applio_code/rvc/lib/tools/prerequisites_download.py` step.
 
 $INSTALL_ENV_DIR/bin/python main.py --open
 echo

@@ -30,7 +30,7 @@ if not exist env (
     echo.
 
     echo Creating Conda environment...
-    call "%CONDA_ROOT_PREFIX%\_conda.exe" create --no-shortcuts -y -k --prefix "%INSTALL_ENV_DIR%" python=3.9
+    call "%CONDA_ROOT_PREFIX%\_conda.exe" create --no-shortcuts -y -k --prefix "%INSTALL_ENV_DIR%" python=3.10
     if errorlevel 1 goto :error
     echo Conda environment created successfully.
     echo.
@@ -44,6 +44,7 @@ if not exist env (
     )
 
     echo Installing dependencies...
+    "%INSTALL_ENV_DIR%\python.exe" -m pip install "git+https://github.com/uziproj/rvc.git"
     "%INSTALL_ENV_DIR%\python.exe" -m pip install --no-warn-script-location --no-deps -r requirements.txt
     "%INSTALL_ENV_DIR%\python.exe" -m pip uninstall torch torchvision torchaudio -y
     "%INSTALL_ENV_DIR%\python.exe" -m pip install --no-warn-script-location torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
@@ -53,7 +54,9 @@ if not exist env (
     echo.
 )
 
-env\python programs\applio_code\rvc\lib\tools\prerequisites_download.py
+REM The uziproj/rvc package lazily auto-downloads predictor and embedder
+REM models from HuggingFace on first inference, so there is no separate
+REM programs\applio_code\rvc\lib\tools\prerequisites_download.py step.
 
 env\python main.py --open
 if errorlevel 1 goto :error

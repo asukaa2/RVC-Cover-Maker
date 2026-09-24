@@ -3,6 +3,7 @@ import subprocess
 import torch
 from functools import lru_cache
 import shutil
+import re
 from pedalboard import Pedalboard, Reverb
 from pedalboard.io import AudioFile
 from pydub import AudioSegment
@@ -12,8 +13,25 @@ import yaml
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
-from programs.applio_code.rvc.infer.infer import VoiceConverter
-from programs.applio_code.rvc.lib.tools.model_download import model_download_pipeline
+
+# ---------------------------------------------------------------------------
+# RVC integration
+#
+# This project uses the `rvc` package (https://github.com/uziproj/rvc) for
+# voice conversion. The package is installed via:
+#     pip install git+https://github.com/uziproj/rvc.git
+#
+# Public API surface we rely on:
+#   - rvc.Config(embedder_model=..., f0_method=..., is_half=..., cpu_mode=...)
+#   - rvc.run_inference_script(config=..., pth_path=..., input_path=...,
+#                              output_path=..., pitch=..., f0_method=...,
+#                              index_path=..., embedder_model=..., ...)
+#   - rvc.utils.HF_download_file(url, output_path)  for model downloads
+#
+# We import lazily inside the helpers below so the heavy PyTorch / fairseq
+# stack is only loaded when an RVC inference is actually requested (and not
+# at module import time, which would break e.g. the music-separation path).
+# ---------------------------------------------------------------------------
 from programs.music_separation_code.inference import proc_file
 
 models_vocals = [
@@ -134,18 +152,106 @@ deecho_models = [
 ]
 
 
-@lru_cache(maxsize=None)
-def import_voice_converter():
-    from programs.applio_code.rvc.infer.infer import VoiceConverter
+def get_config(embedder_model="contentvec", f0_method="rmvpe", is_half=None, cpu_mode=False):
+    """Build (or reuse the singleton) `rvc.Config`.
 
-    return VoiceConverter()
+    `rvc.Config` is itself a singleton via `@singleton` in the upstream
+    package, so the FIRST call's parameters win — subsequent calls with
+    different `embedder_model` / `f0_method` arguments are silently ignored
+    by the package. We honour that contract here and intentionally do NOT
+    wrap this function in `lru_cache`, because callers may pass different
+    parameters (e.g. switching embedder between main and backing vocals)
+    and we still need to return *a* Config object back to them.
+    """
+    from rvc import Config
+
+    # Auto-detect fp16 support unless the caller pinned `is_half` explicitly.
+    if is_half is None:
+        if torch.cuda.is_available():
+            is_half = check_fp16_support(torch.cuda.current_device())
+        else:
+            is_half = False
+
+    return Config(
+        embedder_model=embedder_model,
+        f0_method=f0_method,
+        is_half=is_half,
+        cpu_mode=cpu_mode,
+    )
 
 
-@lru_cache(maxsize=1)
-def get_config():
-    from programs.applio_code.rvc.configs.config import Config
+def run_rvc_inference(
+    model_path,
+    index_path,
+    input_audio_path,
+    output_audio_path,
+    embedder_model,
+    pitch,
+    f0_method,
+    filter_radius,
+    index_rate,
+    volume_envelope,
+    protect,
+    split_audio,
+    f0_autotune,
+    hop_length,
+    export_format,
+):
+    """Run a single RVC voice conversion using the `rvc` package.
 
-    return Config()
+    This wraps `rvc.run_inference_script` (function form) which loads the
+    .pth model fresh on every call. For back-to-back conversions of the
+    SAME model (e.g. main vocals + backing vocals) this is slightly less
+    efficient than `rvc.RVClass` (which loads once and reuses), but it
+    matches the original Cover Maker semantics where two different model
+    paths may be passed in the same `full_inference_program` call.
+
+    The `rvc` package normalises the embedder name internally, so legacy
+    Cover-Maker values like "contentvec" are accepted here and mapped to
+    the package's expected "contentvec_base" identifier automatically.
+    """
+    from rvc import run_inference_script
+
+    # Normalise embedder names to the identifiers the `rvc` package expects.
+    # The original Cover Maker UI exposes ["contentvec", "chinese-hubert-base",
+    # "japanese-hubert-base", "korean-hubert-base"]; uziproj/rvc expects the
+    # full filenames found in `assets/models/*.pt` (without the `.pt` suffix).
+    embedder_aliases = {
+        "contentvec": "contentvec_base",
+        "chinese-hubert-base": "chinese_hubert_base",
+        "japanese-hubert-base": "japanese_hubert_base",
+        "korean-hubert-base": "korean_hubert_base",
+    }
+    embedder_model = embedder_aliases.get(embedder_model, embedder_model)
+
+    # The Cover Maker UI historically offered a bare "crepe" option, but the
+    # uziproj/rvc package requires an explicit size suffix. Map "crepe" ->
+    # "crepe-full" for backwards compatibility with existing presets.
+    f0_aliases = {
+        "crepe": "crepe-full",
+    }
+    f0_method = f0_aliases.get(f0_method, f0_method)
+
+    config = get_config(embedder_model=embedder_model, f0_method=f0_method)
+
+    run_inference_script(
+        config=config,
+        input_path=input_audio_path,
+        output_path=output_audio_path,
+        pth_path=model_path,
+        pitch=pitch,
+        f0_method=f0_method,
+        filter_radius=filter_radius,
+        index_rate=index_rate,
+        volume_envelope=volume_envelope,
+        protect=protect,
+        hop_length=hop_length,
+        index_path=index_path,
+        embedder_model=embedder_model,
+        export_format=export_format.lower(),
+        split_audio=split_audio,
+        f0_autotune=f0_autotune,
+    )
 
 
 def download_file(url, path, filename):
@@ -852,15 +958,13 @@ def full_inference_program(
         "rvc",
         f"{os.path.basename(input_audio_path).split('.')[0]}_rvc.wav",
     )
-    inference_vc = import_voice_converter()
-    inference_vc.convert_audio(
-        audio_input_path=final_path,
-        audio_output_path=output_rvc,
+    run_rvc_inference(
         model_path=model_path,
         index_path=index_path,
+        input_audio_path=final_path,
+        output_audio_path=output_rvc,
         embedder_model=embedder_model,
         pitch=pitch,
-        f0_file=None,
         f0_method=pitch_extract,
         filter_radius=filter_radius,
         index_rate=index_rate,
@@ -870,7 +974,6 @@ def full_inference_program(
         f0_autotune=autotune,
         hop_length=hop_lenght,
         export_format=export_format_rvc,
-        embedder_model_custom=None,
     )
     backing_vocals = os.path.join(
         karaoke_path, search_with_word(karaoke_path, "instrumental")
@@ -884,14 +987,13 @@ def full_inference_program(
         output_backing_vocals = os.path.join(
             karaoke_path, f"{input_audio_basename}_instrumental_output.wav"
         )
-        inference_vc.convert_audio(
-            audio_input_path=backing_vocals,
-            audio_output_path=output_backing_vocals,
+        run_rvc_inference(
             model_path=infer_backing_vocals_model,
             index_path=infer_backing_vocals_index,
+            input_audio_path=backing_vocals,
+            output_audio_path=output_backing_vocals,
             embedder_model=embedder_model_back,
             pitch=pitch_back,
-            f0_file=None,
             f0_method=pitch_extract_back,
             filter_radius=filter_radius_back,
             index_rate=index_rate_back,
@@ -901,7 +1003,6 @@ def full_inference_program(
             f0_autotune=autotune_back,
             hop_length=hop_length_back,
             export_format=export_format_rvc_back,
-            embedder_model_custom=None,
         )
         backing_vocals = output_backing_vocals
 
@@ -1005,9 +1106,64 @@ def full_inference_program(
     )
 
 
+def _format_title(title):
+    """Sanitise a string into a safe directory/file name.
+
+    Re-implements the legacy `programs.applio_code.rvc.lib.utils.format_title`
+    helper, since the upstream `rvc` package does not ship an equivalent.
+    The behaviour matches Applio: keep alphanumerics, whitespace and dashes;
+    collapse every other non-word char (including dots, parens, etc.) into
+    a single underscore, then lowercase the result.
+    """
+    title = re.sub(r"[^\w\s.-]", "", title)
+    title = re.sub(r"[\s._-]+", "_", title).strip("_")
+    return title.lower()
+
+
 def download_model(link):
-    model_download_pipeline(link)
-    return "Model downloaded with success"
+    """Download an RVC voice model (.pth + optional .index) from a URL.
+
+    Accepts either:
+      * a direct file URL (e.g. `https://example.com/voice.pth`), or
+      * a HuggingFace model-card URL whose path ends in `.pth`
+        (e.g. `https://huggingface.co/user/model/resolve/main/voice.pth`).
+        In that case we also try to fetch a sibling `.index` file from the
+        same directory listing if one exists.
+
+    Files are stored under `logs/<model_name>/`, mirroring the original
+    Applio behaviour that the Cover Maker UI relies on.
+    """
+    from rvc.utils import HF_download_file
+
+    # Normalise HuggingFace URLs to the canonical /resolve/ form.
+    url = link.strip().replace("/blob/", "/resolve/").replace("?download=true", "")
+    filename = os.path.basename(url.split("?")[0])
+
+    if not filename.lower().endswith(".pth"):
+        return (
+            f"URL does not point to a .pth file: {link!r}. "
+            "Please provide a direct link to a voice model .pth file."
+        )
+
+    model_name = _format_title(filename[:-4])
+    model_dir = os.path.join(now_dir, "logs", model_name)
+    os.makedirs(model_dir, exist_ok=True)
+
+    pth_dst = os.path.join(model_dir, filename)
+    HF_download_file(url, pth_dst)
+
+    # Best-effort: try to fetch a sibling .index file from the same remote
+    # directory. We do not treat failure here as an error — many models
+    # ship without an index.
+    index_url = re.sub(r"/[^/]+\.pth$", "/" + model_name + ".index", url)
+    if index_url != url:
+        try:
+            index_dst = os.path.join(model_dir, model_name + ".index")
+            HF_download_file(index_url, index_dst)
+        except Exception as e:
+            print(f"[INFO] No sibling .index found for {filename} ({e})")
+
+    return f"Model downloaded with success: {pth_dst}"
 
 
 def download_music(link):

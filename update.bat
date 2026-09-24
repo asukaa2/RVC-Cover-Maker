@@ -2,38 +2,30 @@
 setlocal
 
 REM Define the repository URL
-set REPO_URL=https://github.com/Eddycrack864/RVC-AI-Cover-Maker-UI
+set REPO_URL=https://github.com/asukaa2/RVC-Cover-Maker
 
 REM Navigate to the directory where the script is located
 cd /d %~dp0
 
-REM Loop through all directories except "env", "logs", "audio_files", and "programs/applio_code/rvc/models"
+REM After the migration to the `rvc` pip package, the vendored
+REM `programs/applio_code/` directory is gone. Predictor / embedder
+REM models now live in `assets/models/` (managed by the `rvc` package
+REM itself, which auto-downloads them from HuggingFace on first use).
+REM Loop through all top-level directories except the ones we keep.
 for /d %%D in (*) do (
-    if /i not "%%D"=="env" if /i not "%%D"=="logs" if /i not "%%D"=="audio_files" if /i not "%%D"=="models" if /i not "%%D"=="programs" (
+    if /i not "%%D"=="env" if /i not "%%D"=="logs" if /i not "%%D"=="audio_files" if /i not "%%D"=="assets" (
         echo Deleting directory %%D
         rmdir /s /q "%%D"
     )
 )
 
-REM Loop through all subdirectories in "programs" except "applio_code/rvc/models"
-for /d %%D in (programs\*) do (
-    if /i not "%%D"=="programs\applio_code" (
-        echo Deleting directory %%D
-        rmdir /s /q "%%D"
-    )
-)
-
-for /d %%D in (programs\applio_code\*) do (
-    if /i not "%%D"=="programs\applio_code\rvc" (
-        echo Deleting directory %%D
-        rmdir /s /q "%%D"
-    )
-)
-
-for /d %%D in (programs\applio_code\rvc\*) do (
-    if /i not "%%D"=="programs\applio_code\rvc\models" (
-        echo Deleting directory %%D
-        rmdir /s /q "%%D"
+REM Inside `assets/`, only keep the `models` subdirectory.
+if exist assets (
+    for /d %%D in (assets\*) do (
+        if /i not "%%D"=="assets\models" (
+            echo Deleting directory %%D
+            rmdir /s /q "%%D"
+        )
     )
 )
 
