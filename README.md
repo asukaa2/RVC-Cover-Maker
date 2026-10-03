@@ -1,6 +1,6 @@
 <div align="center">
   
-# <a href="https://github.com/Eddycrack864/RVC-AI-Cover-Maker-UI" target="_blank"><img src="https://github.com/Eddycrack864/RVC-AI-Cover-Maker-UI/blob/main/assets/RVCCoverWebUI.png" alt="RVCAICoverMaker"></a>
+# RVC COVER MAKER 
 
 # Usage
 
@@ -33,9 +33,7 @@
 
 # Cloud
 
-| **Colab** | **Kaggle** |
-|:---:|:---:|
-| <a target="_blank" href="https://colab.research.google.com/github/Eddycrack864/RVC-AI-Cover-Maker-UI/blob/main/assets/RVCAICoverMakerUI.ipynb"> <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/> </a> |  <a target="_blank" href="https://www.kaggle.com/code/eddycrack864/rvc-ai-cover-maker-ui"> <img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"/> </a> |
+ <a target="_blank" href="https://colab.research.google.com/github/Eddycrack864/RVC-AI-Cover-Maker-UI/blob/main/assets/RVCAICoverMakerUI.ipynb"> <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/> </a>
 
 Here's also an [English Guide for Google Colab & Kaggle UI](https://docs.aihub.gg/rvc/cloud/aicovermaker/)
 
