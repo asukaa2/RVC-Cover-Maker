@@ -14,24 +14,6 @@ import yaml
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 
-# ---------------------------------------------------------------------------
-# RVC integration
-#
-# This project uses the `rvc` package (https://github.com/uziproj/rvc) for
-# voice conversion. The package is installed via:
-#     pip install git+https://github.com/uziproj/rvc.git
-#
-# Public API surface we rely on:
-#   - rvc.Config(embedder_model=..., f0_method=..., is_half=..., cpu_mode=...)
-#   - rvc.run_inference_script(config=..., pth_path=..., input_path=...,
-#                              output_path=..., pitch=..., f0_method=...,
-#                              index_path=..., embedder_model=..., ...)
-#   - rvc.utils.HF_download_file(url, output_path)  for model downloads
-#
-# We import lazily inside the helpers below so the heavy PyTorch / fairseq
-# stack is only loaded when an RVC inference is actually requested (and not
-# at module import time, which would break e.g. the music-separation path).
-# ---------------------------------------------------------------------------
 from programs.music_separation_code.inference import proc_file
 
 models_vocals = [
