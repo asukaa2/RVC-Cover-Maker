@@ -5,4 +5,4 @@ pedalboard
 pydub
 regex
 PyYAML
-gradio
+gradio==6.29.1
