@@ -3,7 +3,7 @@
   --muted:#9aa3b2; --accent:#6ea8fe; --accent2:#3b82f6; --border:#2a2f3a;
 }
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+body{margin:0;font:14px/1.45 Syne, Syne,Roboto,sans-serif;background:var(--bg);color:var(--text)}
 header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--border)}
 h1{font-size:18px;margin:0}
 h2{font-size:15px;margin:20px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
