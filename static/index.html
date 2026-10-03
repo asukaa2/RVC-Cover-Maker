@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RVC Full Inference</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header>
+  <h1>RVC Full Inference</h1>
+  <span id="status" class="status">idle</span>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="inference">Inference</button>
+  <button class="tab" data-tab="dlmodel">Dl model</button>
+  <button class="tab" data-tab="dlmusic">Dl music</button>
+</nav>
+
+<main>
+
+<!-- ======================= INFERENCE TAB ======================= -->
+<section id="tab-inference" class="panel active">
+
+  <div class="grid two">
+    <label>Voice Model
+      <select id="model_file"></select>
+    </label>
+    <label>Index File
+      <select id="index_file"></select>
+    </label>
+  </div>
+
+  <div class="row">
+    <button id="refresh">Refresh</button>
+    <button id="unload">Unload Voice</button>
+  </div>
+
+  <fieldset>
+    <legend>Single</legend>
+
+    <div class="grid two">
+      <label>Upload Audio
+        <input type="file" id="upload_audio" accept="audio/*" />
+      </label>
+      <label>Select Audio
+        <select id="audio"></select>
+      </label>
+    </div>
+
+    <!-- RVC Settings -->
+    <details open>
+      <summary>RVC Settings</summary>
+      <div class="grid three">
+        <label>Pitch Extractor
+          <select id="pitch_extract">
+            <option>rmvpe</option><option>crepe</option>
+            <option>crepe-tiny</option><option>fcpe</option>
+          </select>
+        </label>
+        <label>Hop Length
+          <input type="number" id="hop_length" value="64" min="1" max="512" />
+        </label>
+        <label>Embedder Model
+          <select id="embedder_model">
+            <option>contentvec</option><option>chinese-hubert-base</option>
+            <option>japanese-hubert-base</option><option>korean-hubert-base</option>
+          </select>
+        </label>
+        <label>Pitch <input type="number" id="pitch" value="0" min="-12" max="12" /></label>
+        <label>Filter Radius <input type="number" id="filter_radius" value="3" min="0" max="7" /></label>
+        <label>Search Feature Ratio <input type="number" id="index_rate" value="0.75" step="0.01" min="0" max="1" /></label>
+        <label>Volume Envelope <input type="number" id="rms_mix_rate" value="0.25" step="0.01" min="0" max="1" /></label>
+        <label>Protect Voiceless <input type="number" id="protect" value="0.33" step="0.01" min="0" max="0.5" /></label>
+        <label>Split Audio <input type="checkbox" id="split_audio" /></label>
+        <label>Autotune <input type="checkbox" id="autotune" /></label>
+        <label>Export Format (RVC)
+          <select id="export_format_rvc">
+            <option>WAV</option><option>MP3</option><option>FLAC</option>
+            <option>OGG</option><option>M4A</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="checkbox">Infer Backing Vocals
+        <input type="checkbox" id="infer_backing_vocals" />
+      </label>
+
+      <div id="backing_vocals_box" class="hidden">
+        <div class="grid two">
+          <label>Backing Vocals Model <select id="infer_backing_vocals_model"></select></label>
+          <label>Backing Vocals Index <select id="infer_backing_vocals_index"></select></label>
+        </div>
+        <details>
+          <summary>RVC Settings for Backing vocals</summary>
+          <div class="grid three">
+            <label>Export Format
+              <select id="export_format_rvc_back">
+                <option>WAV</option><option>MP3</option><option>FLAC</option>
+                <option>OGG</option><option>M4A</option>
+              </select>
+            </label>
+            <label>Split Audio <input type="checkbox" id="split_audio_back" /></label>
+            <label>Pitch Extractor
+              <select id="pitch_extract_back">
+                <option>rmvpe</option><option>crepe</option>
+                <option>crepe-tiny</option><option>fcpe</option>
+              </select>
+            </label>
+            <label>Hop Length <input type="number" id="hop_length_back" value="64" min="1" max="512" /></label>
+            <label>Embedder Model
+              <select id="embedder_model_back">
+                <option>contentvec</option><option>chinese-hubert-base</option>
+                <option>japanese-hubert-base</option><option>korean-hubert-base</option>
+              </select>
+            </label>
+            <label>Autotune <input type="checkbox" id="autotune_back" /></label>
+            <label>Pitch <input type="number" id="pitch_back" value="0" min="-12" max="12" /></label>
+            <label>Filter Radius <input type="number" id="filter_radius_back" value="3" min="0" max="7" /></label>
+            <label>Search Feature Ratio <input type="number" id="index_rate_back" value="0.75" step="0.01" min="0" max="1" /></label>
+            <label>Volume Envelope <input type="number" id="rms_mix_rate_back" value="0.25" step="0.01" min="0" max="1" /></label>
+            <label>Protect Voiceless <input type="number" id="protect_back" value="0.33" step="0.01" min="0" max="0.5" /></label>
+          </div>
+        </details>
+      </div>
+    </details>
+
+    <!-- Audio Separation Settings -->
+    <details>
+      <summary>Audio Separation Settings</summary>
+      <div class="grid three">
+        <label>Vocals Model <select id="vocal_model"></select></label>
+        <label>Karaoke Model <select id="karaoke_model"></select></label>
+        <label>Dereverb Model <select id="dereverb_model"></select></label>
+        <label>Deeecho <input type="checkbox" id="deecho" checked /></label>
+        <label>Deeecho Model <select id="deeecho_model"></select></label>
+        <label>Denoise <input type="checkbox" id="denoise" /></label>
+        <label>Denoise Model <select id="denoise_model" class="hidden"></select></label>
+        <label>Use TTA <input type="checkbox" id="use_tta" /></label>
+        <label>Batch Size <input type="number" id="batch_size" value="1" min="1" max="24" /></label>
+      </div>
+    </details>
+
+    <!-- Audio post-process Settings -->
+    <details>
+      <summary>Audio post-process Settings</summary>
+      <div class="grid three">
+        <label>Change Instrumental Pitch <input type="number" id="change_inst_pitch" value="0" min="-12" max="12" /></label>
+        <label>Delete Audios <input type="checkbox" id="delete_audios" checked /></label>
+        <label>Reverb <input type="checkbox" id="reverb" /></label>
+        <label class="hidden reverb-slider">Room Size <input type="number" id="reverb_room_size" value="0.5" step="0.01" min="0" max="1" /></label>
+        <label class="hidden reverb-slider">Damping <input type="number" id="reverb_damping" value="0.5" step="0.01" min="0" max="1" /></label>
+        <label class="hidden reverb-slider">Wet Gain <input type="number" id="reverb_wet_gain" value="0.33" step="0.01" min="0" max="1" /></label>
+        <label class="hidden reverb-slider">Dry Gain <input type="number" id="reverb_dry_gain" value="0.4" step="0.01" min="0" max="1" /></label>
+        <label class="hidden reverb-slider">Width <input type="number" id="reverb_width" value="1.0" step="0.01" min="0" max="1" /></label>
+        <label>Vocals Volume <input type="number" id="vocals_volume" value="-3" min="-10" max="0" /></label>
+        <label>Instrumentals Volume <input type="number" id="instrumentals_volume" value="-3" min="-10" max="0" /></label>
+        <label>Backing Vocals Volume <input type="number" id="backing_vocals_volume" value="-3" min="-10" max="0" /></label>
+        <label>Export Format (Final)
+          <select id="export_format_final">
+            <option>WAV</option><option>MP3</option><option>FLAC</option>
+            <option>OGG</option><option>M4A</option>
+          </select>
+        </label>
+      </div>
+    </details>
+
+    <!-- Device Settings -->
+    <details>
+      <summary>Device Settings</summary>
+      <div class="grid one">
+        <label>Device <input type="text" id="devices" value="0" /></label>
+      </div>
+    </details>
+
+    <input type="hidden" id="output_path" value="audio_files/rvc" />
+
+  </fieldset>
+
+  <div class="row">
+    <button id="convert" class="primary">Convert</button>
+    <button id="clear_outputs">Clear Outputs</button>
+  </div>
+
+  <div class="output">
+    <label>Output Information
+      <textarea id="vc_output1" readonly></textarea>
+    </label>
+    <audio id="vc_output2" controls></audio>
+  </div>
+</section>
+
+<!-- ======================= DL MODEL TAB ======================= -->
+<section id="tab-dlmodel" class="panel">
+  <h2>Download Model</h2>
+  <label>Model URL <input type="text" id="model_url" /></label>
+  <button id="download_model_btn">Download</button>
+  <label>Output Information
+    <textarea id="dlmodel_output" readonly></textarea>
+  </label>
+
+  <h2>Drop files</h2>
+  <label>Drag your .pth / .index file here
+    <input type="file" id="drop_model" />
+  </label>
+</section>
+
+<!-- ======================= DL MUSIC TAB ======================= -->
+<section id="tab-dlmusic" class="panel">
+  <h2>Download Music</h2>
+  <label>Music URL <input type="text" id="music_url" /></label>
+  <button id="download_music_btn">Download</button>
+  <label>Output Information
+    <textarea id="dlmusic_output" readonly></textarea>
+  </label>
+</section>
+
+</main>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+          </html>
