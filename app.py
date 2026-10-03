@@ -322,4 +322,7 @@ def download_music_url(link: str) -> str:
 
 
 if __name__ == "__main__":
-    app.launch(show_error=True)
+    app.launch(
+        show_error=True,
+        share=True,
+    )
