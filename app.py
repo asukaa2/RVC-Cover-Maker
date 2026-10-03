@@ -6,6 +6,7 @@ import unicodedata
 import regex as re
 from pathlib import Path
 from typing import Optional
+from argparse import ArgumentParser
 
 import torch
 from fastapi import UploadFile, File
@@ -322,7 +323,10 @@ def download_music_url(link: str) -> str:
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser(description='RVC V2.', add_help=True)
+    parser.add_argument("--share", action="store_true", dest="share_enabled", default=False, help="Enable sharing")
+    args = parser.parse_args()
     app.launch(
         show_error=True,
-        share=True,
+        share=args.share_enabled,
     )
